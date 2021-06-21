@@ -1,0 +1,67 @@
+{
+    "@timestamp": "2017-10-12T08:05:34.853Z",
+    "event": {
+        "dataset": "postgresql.statement",
+        "duration": 115000,
+        "module": "postgresql"
+    },
+    "metricset": {
+        "name": "statement",
+        "period": 10000
+    },
+    "postgresql": {
+        "statement": {
+            "database": {
+                "oid": 12379
+            },
+            "query": {
+                "calls": 2,
+                "id": 1592910677,
+                "memory": {
+                    "local": {
+                        "dirtied": 0,
+                        "hit": 0,
+                        "read": 0,
+                        "written": 0
+                    },
+                    "shared": {
+                        "dirtied": 0,
+                        "hit": 0,
+                        "read": 0,
+                        "written": 0
+                    },
+                    "temp": {
+                        "read": 0,
+                        "written": 0
+                    }
+                },
+                "rows": 3,
+                "text": "SELECT * FROM pg_stat_statements",
+                "time": {
+                    "max": {
+                        "ms": 0.161
+                    },
+                    "mean": {
+                        "ms": 0.1595
+                    },
+                    "min": {
+                        "ms": 0.158
+                    },
+                    "stddev": {
+                        "ms": 0.0015000000000000013
+                    },
+                    "total": {
+                        "ms": 0.319
+                    }
+                }
+            },
+            "user": {
+                "id": 10
+            }
+        }
+    },
+    "service": {
+        "address": "192.168.144.2:5432",
+        "type": "postgresql"
+    }
+}

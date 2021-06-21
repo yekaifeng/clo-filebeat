@@ -1,0 +1,61 @@
+{
+    "@timestamp": "2017-10-12T08:05:34.853Z",
+    "event": {
+        "dataset": "system.process",
+        "duration": 115000,
+        "module": "system"
+    },
+    "metricset": {
+        "name": "process",
+        "period": 10000
+    },
+    "process": {
+        "args": [
+            "/sbin/init",
+            "splash"
+        ],
+        "command_line": "/sbin/init splash",
+        "cpu": {
+            "pct": 0,
+            "start_time": "2020-12-04T22:17:35.000Z"
+        },
+        "memory": {
+            "pct": 0.0004
+        },
+        "name": "systemd",
+        "pgid": 1,
+        "pid": 1,
+        "ppid": 0,
+        "state": "sleeping"
+    },
+    "service": {
+        "type": "system"
+    },
+    "system": {
+        "process": {
+            "cmdline": "/sbin/init splash",
+            "cpu": {
+                "start_time": "2020-12-04T22:17:35.000Z",
+                "total": {
+                    "norm": {
+                        "pct": 0
+                    },
+                    "pct": 0,
+                    "value": 1290
+                }
+            },
+            "memory": {
+                "rss": {
+                    "bytes": 12173312,
+                    "pct": 0.0004
+                },
+                "share": 8679424,
+                "size": 172113920
+            },
+            "state": "sleeping"
+        }
+    },
+    "user": {
+        "name": "root"
+    }
+}
