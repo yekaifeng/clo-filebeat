@@ -67,7 +67,7 @@ type bulkResultStats struct {
 }
 
 const (
-	defaultEventType = "doc"
+	defaultEventType = "_doc"
 )
 
 // NewClient instantiates a new client.
