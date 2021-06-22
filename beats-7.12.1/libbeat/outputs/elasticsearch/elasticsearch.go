@@ -29,7 +29,7 @@ import (
 	"github.com/elastic/beats/v7/libbeat/outputs/outil"
 )
 
-func elasticsearchConfig() {
+func init() {
 	outputs.RegisterType("elasticsearch", makeES)
 }
 
