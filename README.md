@@ -53,7 +53,7 @@ oc get secret fluentd -n openshift-logging -o yaml > secret-fluentd.yaml
 sed -i s/openshift-logging/kube-system/g secret-fluentd.yaml
 
 oc apply -f secret-fluentd.yaml
-oc apply -f deploy/filebeat-oss-kubernetes-7.12.1.yaml
+oc apply -f deploy/filebeat-oss-kubernetes-7.12.1-es-output.yaml
 ~~~
 
 

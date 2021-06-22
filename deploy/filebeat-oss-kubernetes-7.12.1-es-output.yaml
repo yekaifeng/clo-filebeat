@@ -1,0 +1,273 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config
+  namespace: kube-system
+  labels:
+    k8s-app: filebeat
+data:
+  filebeat.yml: |-
+    filebeat.config:
+      inputs:
+        # Mounted `filebeat-inputs` configmap:
+        path: ${path.config}/inputs.d/*.yml
+        # Reload inputs configs as they change:
+      #  reload.enabled: false
+      modules:
+        path: ${path.config}/modules.d/*.yml
+        # Reload module configs as they change:
+        reload.enabled: false
+
+    # To enable hints based autodiscover, remove `filebeat.config.inputs` configuration and uncomment this:
+    filebeat.autodiscover:
+      providers:
+        - type: kubernetes
+          hints.enabled: true
+          hints.default_config:
+            type: container
+            paths:
+              - /var/log/containers/*${data.kubernetes.container.id}.log
+            processors:
+            - rename:
+                fields:
+                  - from: "kubernetes.namespace"
+                    to: "kubernetes.namespace_name"
+                ignore_missing: true
+                fail_on_error: false
+            - copy_fields:
+                fields:
+                  - from: "kubernetes.container.name"
+                    to: "kubernetes.container_name"
+                fail_on_error: false
+                ignore_missing: true
+            - copy_fields:
+                fields:
+                  - from: "kubernetes.node.hostname"
+                    to: "kubernetes.host"
+                fail_on_error: false
+                ignore_missing: true
+            - copy_fields:
+                fields:
+                  - from: "kubernetes.namespace_uid"
+                    to: "kubernetes.namespace_id"
+                fail_on_error: false
+                ignore_missing: true
+            - copy_fields:
+                fields:
+                  - from: "kubernetes.pod.name"
+                    to: "kubernetes.pod_name"
+                fail_on_error: false
+                ignore_missing: true
+            - copy_fields:
+                fields:
+                  - from: "kubernetes.pod.uid"
+                    to: "kubernetes.pod_id"
+                fail_on_error: false
+                ignore_missing: true
+            - if:
+                regexp:
+                  kubernetes.namespace_name: "^openshift-.*"
+              then:
+                - add_fields:
+                    target: ''
+                    fields:
+                      log_type: "infra"
+              else:
+                - add_fields:
+                    target: ''
+                    fields:
+                      log_type: "app"
+
+    output.elasticsearch:
+      hosts: ['https://${ELASTICSEARCH_HOST:elasticsearch}:${ELASTICSEARCH_PORT:9200}']
+      ssl.certificate_authorities: ${FB_CERT_AUTHORITIES}
+      ssl.certificate: ${FB_CLIENT_CERT}
+      ssl.key: ${FB_CLIENT_KEY}
+      indices:
+        - index: "app-write"
+          when.equals:
+            log_type: "app"
+        - index: "infra-write"
+          when.equals:
+            log_type: "infra"
+        - index: "audit-write"
+          when.equals:
+            log_type: "audit"
+
+    setup.template:
+      enabled: false
+    logging.level: info
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-inputs
+  namespace: kube-system
+  labels:
+    k8s-app: filebeat
+data:
+  audit.yml: |-
+    - type: log
+      paths:
+        - /var/log/audit/*.log
+        - /var/log/kube-apiserver/*.log
+        - /var/log/oauth-apiserver/*.log
+        - /var/log/openshift-apiserver/*.log
+      close_timeout: 10m
+      fields:
+        log_type: "audit"
+      fields_under_root: true
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: filebeat
+  namespace: kube-system
+  labels:
+    k8s-app: filebeat
+spec:
+  selector:
+    matchLabels:
+      k8s-app: filebeat
+  template:
+    metadata:
+      labels:
+        k8s-app: filebeat
+    spec:
+      serviceAccountName: filebeat
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: filebeat
+          image: docker.io/kennethye/filebeat-oss:7.12.1-rebuild
+          #image: docker.elastic.co/beats/filebeat-oss:7.12.1
+          args: [
+            "-c", "/etc/filebeat.yml",
+            "-e",
+          ]
+          env:
+            - name: FB_CERT_AUTHORITIES
+              value: /var/run/ocp-collector/secrets/fluentd/ca-bundle.crt
+            - name: FB_CLIENT_CERT
+              value: /var/run/ocp-collector/secrets/fluentd/tls.crt
+            - name: FB_CLIENT_KEY
+              value: /var/run/ocp-collector/secrets/fluentd/tls.key
+            - name: ELASTICSEARCH_HOST
+              value: elasticsearch.openshift-logging.svc
+            - name: ELASTICSEARCH_PORT
+              value: "9200"
+            - name: ELASTICSEARCH_USERNAME
+              value: elastic
+            - name: ELASTICSEARCH_PASSWORD
+              value: changeme
+            - name: ELASTIC_CLOUD_ID
+              value:
+            - name: ELASTIC_CLOUD_AUTH
+              value:
+            - name: TZ
+              value: Asia/Shanghai
+            - name: LANG
+              value: en_US.UTF-8
+          securityContext:
+            runAsUser: 0
+            # If using Red Hat OpenShift uncomment this:
+            privileged: true
+          resources:
+            limits:
+              memory: 200Mi
+            requests:
+              cpu: 100m
+              memory: 100Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/filebeat.yml
+              readOnly: true
+              subPath: filebeat.yml
+            - name: inputs
+              mountPath: /usr/share/filebeat/inputs.d
+              readOnly: true
+            - name: data
+              mountPath: /usr/share/filebeat/data
+            - name: varlibdockercontainers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+            - name: varlog
+              mountPath: /var/log
+              readOnly: true
+            - mountPath: /var/run/ocp-collector/secrets/fluentd
+              name: default
+      volumes:
+        - name: config
+          configMap:
+            defaultMode: 0600
+            name: filebeat-config
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
+        - name: varlog
+          hostPath:
+            path: /var/log
+        - name: inputs
+          configMap:
+            defaultMode: 0600
+            name: filebeat-inputs
+        # data folder stores a registry of read status for all files, so we don't send everything again on a Filebeat pod restart
+        - name: data
+          hostPath:
+            path: /var/lib/filebeat-data
+            type: DirectoryOrCreate
+        - name: default
+          secret:
+            defaultMode: 420
+            secretName: fluentd
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node.kubernetes.io/disk-pressure
+          operator: Exists
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: filebeat
+subjects:
+  - kind: ServiceAccount
+    name: filebeat
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: filebeat
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: filebeat
+  labels:
+    k8s-app: filebeat
+rules:
+  - apiGroups: [""] # "" indicates the core API group
+    resources:
+      - namespaces
+      - pods
+      - nodes
+    verbs:
+      - get
+      - watch
+      - list
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: filebeat
+  namespace: kube-system
+  labels:
+    k8s-app: filebeat
+---
