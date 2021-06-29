@@ -79,6 +79,13 @@ data:
                     fields:
                       log_type: "app"
 
+            # Java Exception match
+            multiline:
+              type: pattern
+              pattern: '^[[:space:]]'
+              negate: false
+              match: after
+
     output.elasticsearch:
       hosts: ['https://${ELASTICSEARCH_HOST:elasticsearch}:${ELASTICSEARCH_PORT:9200}']
       ssl.certificate_authorities: ${FB_CERT_AUTHORITIES}
