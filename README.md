@@ -89,9 +89,24 @@ oc get secret fluentd -n openshift-logging -o yaml > secret-fluentd.yaml
 sed -i s/openshift-logging/kube-system/g secret-fluentd.yaml
 
 oc apply -f secret-fluentd.yaml
+~~~
+
+- For sending logs to Elasticsearch
+
+~~~
 oc apply -f deploy/filebeat-oss-kubernetes-7.12.1-es-output.yaml
 ~~~
 
+- For sending logs to Kafka
 
+~~~
+oc apply -f deploy/filebeat-oss-kubernetes-7.12.1-kafka-output.yaml
+~~~
+
+- For sending logs to Elasticsearch and Kafka
+
+~~~
+oc apply -f deploy/filebeat-oss-kubernetes-7.12.1-es-kafka.yaml
+~~~
 
 
