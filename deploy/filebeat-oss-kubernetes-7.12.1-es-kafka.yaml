@@ -86,6 +86,14 @@ data:
               negate: false
               match: after
 
+            # Decode json format
+            json:
+              keys_under_root: true
+              overwrite_keys: true
+              expand_keys: true
+              add_error_key: true
+              message_key: "message"
+
     output.elasticsearch:
       hosts: ['https://${ELASTICSEARCH_HOST:elasticsearch}:${ELASTICSEARCH_PORT:9200}']
       ssl.certificate_authorities: ${FB_CERT_AUTHORITIES}
@@ -194,6 +202,14 @@ data:
               negate: false
               match: after
 
+            # Decode json format
+            json:
+              keys_under_root: true
+              overwrite_keys: true
+              expand_keys: true
+              add_error_key: true
+              message_key: "message"
+
     output.kafka:
       # initial brokers for reading cluster metadata
       hosts: ["my-cluster-kafka-bootstrap.kafka.svc:9092"]
@@ -269,10 +285,6 @@ spec:
               value: elasticsearch.openshift-logging.svc
             - name: ELASTICSEARCH_PORT
               value: "9200"
-            - name: ELASTICSEARCH_USERNAME
-              value: elastic
-            - name: ELASTICSEARCH_PASSWORD
-              value: changeme
             - name: TZ
               value: Asia/Shanghai
             - name: LANG

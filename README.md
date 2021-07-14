@@ -1,6 +1,42 @@
 # clo-filebeat
 Re-implement the collector in Openshift cluster logging from fluentd to filebeat
 
+# Design consideration
+Openshift EFK stack has 3 kinds of log: audit, infra and app. While it comes to filebeat,
+I sill follow this rule to set the "log_type" with those 3 categories. And send them to elasticsearch
+corresponding index.
+
+### log_type: audit
+Source:
+- /var/log/audit/*.log
+- /var/log/kube-apiserver/*.log
+- /var/log/oauth-apiserver/*.log
+- /var/log/openshift-apiserver/*.log
+
+Destination:
+- ES index: audit-write
+
+### log_type: infra
+Source:
+- /var/log/containers/*.log (namespace start with 'openshift-' )
+
+Destination:
+- ES index: infra-write
+
+### log_type: app
+Source:
+- /var/log/containers/*.log (namespace NOT start with 'openshift-' )
+
+Destination:
+- ES index: app-write
+
+# Support features
+- Collector container and audit logs, then send to Openshift Elasticsearch
+- Collector container and audit logs, then send to Standalone Kafka/Redhat MQ Stream
+- Support parse json string in logs
+- Java Multi lines detection
+
+
 # How to rebuild filebeat docker image
 
 ~~~

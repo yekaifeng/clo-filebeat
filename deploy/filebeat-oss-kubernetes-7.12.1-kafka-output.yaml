@@ -153,24 +153,6 @@ spec:
             "-e",
           ]
           env:
-            - name: FB_CERT_AUTHORITIES
-              value: /var/run/ocp-collector/secrets/fluentd/ca-bundle.crt
-            - name: FB_CLIENT_CERT
-              value: /var/run/ocp-collector/secrets/fluentd/tls.crt
-            - name: FB_CLIENT_KEY
-              value: /var/run/ocp-collector/secrets/fluentd/tls.key
-            - name: ELASTICSEARCH_HOST
-              value: elasticsearch.openshift-logging.svc
-            - name: ELASTICSEARCH_PORT
-              value: "9200"
-            - name: ELASTICSEARCH_USERNAME
-              value: elastic
-            - name: ELASTICSEARCH_PASSWORD
-              value: changeme
-            - name: ELASTIC_CLOUD_ID
-              value:
-            - name: ELASTIC_CLOUD_AUTH
-              value:
             - name: TZ
               value: Asia/Shanghai
             - name: LANG
@@ -201,8 +183,6 @@ spec:
             - name: varlog
               mountPath: /var/log
               readOnly: true
-            - mountPath: /var/run/ocp-collector/secrets/fluentd
-              name: default
       volumes:
         - name: config
           configMap:
@@ -223,10 +203,6 @@ spec:
           hostPath:
             path: /var/lib/filebeat-data
             type: DirectoryOrCreate
-        - name: default
-          secret:
-            defaultMode: 420
-            secretName: fluentd
       nodeSelector:
         kubernetes.io/os: linux
       tolerations:
