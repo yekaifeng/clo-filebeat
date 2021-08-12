@@ -78,6 +78,17 @@ data:
                     target: ''
                     fields:
                       log_type: "app"
+            - if:
+                regexp:
+                  message: "^{.*}$"
+              then:
+                - decode_json_fields:
+                    fields: ["message"]
+                    process_array: true
+                    max_depth: 5
+                    target: ""
+                    overwrite_keys: true
+                    add_error_key: true
 
             # Java Exception match
             multiline:
@@ -85,14 +96,6 @@ data:
               pattern: '^[[:space:]]'
               negate: false
               match: after
-
-            # Decode json format
-            json:
-              keys_under_root: true
-              overwrite_keys: true
-              expand_keys: true
-              add_error_key: true
-              message_key: "message"
 
     output.elasticsearch:
       hosts: ['https://${ELASTICSEARCH_HOST:elasticsearch}:${ELASTICSEARCH_PORT:9200}']
@@ -194,6 +197,17 @@ data:
                     target: ''
                     fields:
                       log_type: "app"
+            - if:
+                regexp:
+                  message: "^{.*}$"
+              then:
+                - decode_json_fields:
+                    fields: ["message"]
+                    process_array: true
+                    max_depth: 5
+                    target: ""
+                    overwrite_keys: true
+                    add_error_key: true
 
             # Java Exception match
             multiline:
@@ -202,17 +216,10 @@ data:
               negate: false
               match: after
 
-            # Decode json format
-            json:
-              keys_under_root: true
-              overwrite_keys: true
-              expand_keys: true
-              add_error_key: true
-              message_key: "message"
-
     output.kafka:
       # initial brokers for reading cluster metadata
       hosts: ["my-cluster-kafka-bootstrap.kafka.svc:9092"]
+      version: 0.11
 
       # message topic selection + partitioning
       topic: 'my-topic'
@@ -298,7 +305,7 @@ spec:
               memory: 512Mi
             requests:
               cpu: 100m
-              memory: 100Mi
+              memory: 512Mi
           volumeMounts:
             - name: config
               mountPath: /etc/filebeat.yml
@@ -392,7 +399,7 @@ spec:
               memory: 512Mi
             requests:
               cpu: 100m
-              memory: 100Mi
+              memory: 512Mi
           volumeMounts:
             - name: config
               mountPath: /etc/filebeat.yml

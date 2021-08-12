@@ -78,6 +78,17 @@ data:
                     target: ''
                     fields:
                       log_type: "app"
+            - if:
+                regexp:
+                  message: "^{.*}$"
+              then:
+                - decode_json_fields:
+                    fields: ["message"]
+                    process_array: true
+                    max_depth: 5
+                    target: ""
+                    overwrite_keys: true
+                    add_error_key: true
 
             # Java Exception match
             multiline:
