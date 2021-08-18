@@ -1,0 +1,183 @@
+apiVersion: apps.openshift.io/v1
+kind: DeploymentConfig
+metadata:
+  labels:
+    app: nginx-echo-sidecar
+  name: nginx-echo-sidecar
+  namespace: ocp-test
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5
+  selector:
+    app: nginx-echo-sidecar
+    deploymentconfig: nginx-echo-sidecar
+  strategy:
+    activeDeadlineSeconds: 21600
+    resources: {}
+    rollingParams:
+      intervalSeconds: 1
+      maxSurge: 25%
+      maxUnavailable: 25%
+      timeoutSeconds: 600
+      updatePeriodSeconds: 1
+    type: Rolling
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: nginx-echo-sidecar
+        deploymentconfig: nginx-echo-sidecar
+    spec:
+      shareProcessNamespace: true
+      containers:
+        - image: docker.io/kennethye/nginx-echo:1.12-2
+          imagePullPolicy: IfNotPresent
+          name: nginx-echo-sidecar
+          ports:
+            - containerPort: 9000
+              name: http
+              protocol: TCP
+          resources:
+            limits:
+              cpu: "2"
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          securityContext:
+            capabilities: {}
+            privileged: false
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /opt/nginx/conf/nginx.conf
+              name: sidecar-config
+              subPath: nginx.conf
+            - mountPath: /var/log/nginx
+              name: nginx-logs
+        - name: filebeat
+          image: docker.io/kennethye/filebeat-oss:7.12.1-rebuild
+          args: [
+            "-c", "/etc/filebeat.yml",
+            "-e",
+          ]
+          env:
+            - name: FB_CERT_AUTHORITIES
+              value: /var/run/ocp-collector/secrets/fluentd/ca-bundle.crt
+            - name: FB_CLIENT_CERT
+              value: /var/run/ocp-collector/secrets/fluentd/tls.crt
+            - name: FB_CLIENT_KEY
+              value: /var/run/ocp-collector/secrets/fluentd/tls.key
+            - name: ELASTICSEARCH_HOST
+              value: elasticsearch.openshift-logging.svc
+            - name: ELASTICSEARCH_PORT
+              value: "9200"
+            - name: TZ
+              value: Asia/Shanghai
+            - name: LANG
+              value: en_US.UTF-8
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+            - name: UID
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.uid
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
+            - name: APP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.labels['app']
+          securityContext:
+            runAsUser: 0
+            # If using Red Hat OpenShift uncomment this:
+            privileged: true
+          resources:
+            limits:
+              memory: 200Mi
+            requests:
+              cpu: 100m
+              memory: 100Mi
+          volumeMounts:
+            - name: sidecar-config
+              mountPath: /etc/filebeat.yml
+              readOnly: true
+              subPath: filebeat.yml
+            - name: filebeat-data
+              mountPath: /usr/share/filebeat/data
+            - name: default
+              mountPath: /var/run/ocp-collector/secrets/fluentd
+            - name: nginx-logs
+              mountPath: /var/log/nginx
+              readOnly: true
+        - image: docker.io/kennethye/centos-logrotate:1.0
+          imagePullPolicy: IfNotPresent
+          name: centos-logrotate
+          command:
+            - /bin/bash
+            - -c
+            - while true; do /usr/sbin/logrotate -fv /etc/logrotate.d/rotate-nginx.conf; sleep 3600;done
+          resources:
+            limits:
+              cpu: "500m"
+              memory: 50M
+          securityContext:
+            privileged: true
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /var/log/nginx
+              name: nginx-logs
+            - mountPath: /etc/logrotate.d/rotate-nginx.conf
+              name: sidecar-config
+              subPath: rotate-nginx.conf
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: default
+      serviceAccountName: default
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - name: default
+          secret:
+            defaultMode: 420
+            secretName: fluentd
+        - configMap:
+            defaultMode: 420
+            name: sidecar-config
+          name: sidecar-config
+        - name: nginx-logs
+          emptyDir: {}
+        - name: filebeat-data
+          emptyDir: {}
+  test: false
+  triggers:
+    - type: ConfigChange
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: nginx-echo-sidecar
+  name: nginx-echo-sidecar
+  namespace: ocp-test
+spec:
+  ports:
+    - port: 9000
+      protocol: TCP
+      targetPort: 9000
+  selector:
+    app: nginx-echo-sidecar
+    deploymentconfig: nginx-echo-sidecar
+  sessionAffinity: None
+  type: ClusterIP

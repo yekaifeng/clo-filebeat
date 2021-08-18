@@ -1,0 +1,15 @@
+FROM centos:7.6.1810
+MAINTAINER kye@redhat.com
+
+ENV NAME=logrotate
+
+RUN yum install -y logrotate
+ADD nginx /etc/logrotate.d
+
+RUN useradd logrotate && \
+    chown -R logrotate:0 /var/lib/logrotate && \
+    chmod -R g+rwx /var/lib/logrotate
+
+WORKDIR /var/lib/logrotate
+USER logrotate
+CMD ["/bin/bash", "-c", "while true;do /usr/sbin/logrotate -vf /etc/logrotate.d/nginx; sleep 86400;done"]
